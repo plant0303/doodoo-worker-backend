@@ -11,8 +11,24 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
+interface Env {
+	STOCK_IMAGES: R2Bucket; 
+	SUPABASE_ANON_KEY: string;
+	SUPABASE_SERVICE_KEY: string;
+}
+
 export default {
-	async fetch(request, env, ctx): Promise<Response> {
-		return new Response('Hello World!');
+	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+		const url = new URL(request.url);
+
+		if (url.pathname === '/api/list') {
+			// 2. env.STOCK_IMAGES 변수를 사용하여 R2 버킷의 API를 호출합니다.
+			const listing = await env.STOCK_IMAGES.list(); 
+			
+			// ... 로직 처리 ...
+
+			return new Response(JSON.stringify(listing.objects));
+		}
+		// ... 기타 로직 (Signed URL 생성 등) ...
 	},
-} satisfies ExportedHandler<Env>;
+};
