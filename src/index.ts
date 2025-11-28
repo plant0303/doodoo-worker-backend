@@ -2,6 +2,7 @@ import { Router } from 'itty-router';
 import { handleSearch } from './handlers/search';
 import { Env, CORS_HEADERS } from './lib/constants';
 import { handleDownload } from './handlers/download';
+import { handlePhoto } from './handlers/handlePhoto';
 
 interface Env {
   PRIVATE_ORIGINALS: R2Bucket;
@@ -31,6 +32,10 @@ export default {
 
     if (url.pathname === '/api/download') {
       return handleDownload(request, env);
+    }
+
+    if (url.pathname === '/api/photo') {
+      return handlePhoto(request, env);
     }
     return new Response('API route not found.', { status: 404 });
   },
