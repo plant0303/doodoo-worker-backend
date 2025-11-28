@@ -1,20 +1,21 @@
 import { Router } from 'itty-router';
 import { handleSearch } from './handlers/search';
 import { Env, CORS_HEADERS } from './lib/constants';
+import { handleDownload } from './handlers/download';
 
 interface Env {
-	PRIVATE_ORIGINALS: R2Bucket; 
-	PUBLIC_ASSETS: R2Bucket;  
+  PRIVATE_ORIGINALS: R2Bucket;
+  PUBLIC_ASSETS: R2Bucket;
 
-	SUPABASE_URL: string;
-	SUPABASE_ANON_KEY: string;
-	SUPABASE_SERVICE_KEY: string;
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
+  SUPABASE_SERVICE_KEY: string;
 }
 
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    
+
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 200,
@@ -28,6 +29,9 @@ export default {
       return handleSearch(request, env);
     }
 
-		return new Response('API route not found.', { status: 404 });
-	},
+    if (url.pathname === '/api/download') {
+      return handleDownload(request, env);
+    }
+    return new Response('API route not found.', { status: 404 });
+  },
 };
