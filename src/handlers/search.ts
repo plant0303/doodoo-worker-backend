@@ -19,7 +19,7 @@ export async function handleSearch(request: Request, env: Env): Promise<Response
 
   const { data, error, count } = await supabase
     .rpc('search_images', { search_query: query })
-    .select('id, title, thumb_url, preview_url, width, height, category', { count: 'exact' })
+    .select('id, title, thumb_url, preview_url, category', { count: 'exact' })
     .range(offset, offset + limit - 1); // 페이지네이션 적용
 
   if (error) {
