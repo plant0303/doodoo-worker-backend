@@ -3,6 +3,7 @@ import { handleSearch } from './handlers/search';
 import { Env, CORS_HEADERS } from './lib/constants';
 import { handleDownload } from './handlers/download';
 import { handlePhoto } from './handlers/handlePhoto';
+import { handleGetCategories } from './handlers/handleGetCategories';
 
 interface Env {
   PRIVATE_ORIGINALS: R2Bucket;
@@ -30,7 +31,10 @@ export default {
       return handleSearch(request, env);
     }
 
-    
+    if (url.pathname === '/api/categories' && request.method === 'GET') {
+      return handleGetCategories(request, env);
+    }
+
     if (url.pathname === '/api/download') {
       return handleDownload(request, env);
     }
