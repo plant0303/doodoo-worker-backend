@@ -6,25 +6,34 @@ export async function handleSearch(request: Request, env: Env): Promise<Response
   const url = new URL(request.url);
 
   const query = url.searchParams.get('q');
+  const category = url.searchParams.get('category');
+
   const page = parseInt(url.searchParams.get('p') || '1', 10);
   const limit = parseInt(url.searchParams.get('limit') || '30', 10);
   const offset = (page - 1) * limit;
 
-  if (!query) {
-    return new Response(JSON.stringify({ error: '검색어(q)를 제공해야 합니다.' }), { 
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS } 
+  if (!query && !category) {
+    return new Response(JSON.stringify({ error: '검색어(q) 또는 카테고리(category)를 제공해야 합니다.' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
     });
   }
 
-  const { data, error, count } = await supabase
-    .rpc('search_images', { search_query: query })
-    .select('id, title, thumb_url, preview_url, category', { count: 'exact' })
-    .range(offset, offset + limit - 1); // 페이지네이션 적용
+  let dbQuery = supabase.from('images').select('id, title, thumb_url, preview_url, category', { count: 'exact' });
+
+  if (query) {
+    dbQuery = supabase.rpc('search_images', { search_query: query })
+      .select('id, title, thumb_url, preview_url, category', { count: 'exact' });
+  } else if (category) {
+    dbQuery = dbQuery.eq('category', category);
+  }
+
+  const { data, error, count } = await dbQuery
+    .range(offset, offset + limit - 1);
 
   if (error) {
-    console.error('Supabase RPC error:', error.message);
-    return new Response(JSON.stringify({ error: `Supabase RPC error: ${error.message}` }), {
+    console.error('Supabase query error:', error.message);
+    return new Response(JSON.stringify({ error: `Supabase query error: ${error.message}` }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     });

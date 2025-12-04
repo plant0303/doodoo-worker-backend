@@ -30,6 +30,7 @@ export default {
       return handleSearch(request, env);
     }
 
+    
     if (url.pathname === '/api/download') {
       return handleDownload(request, env);
     }
