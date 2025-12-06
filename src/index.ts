@@ -4,6 +4,7 @@ import { Env, CORS_HEADERS } from './lib/constants';
 import { handleDownload } from './handlers/download';
 import { handlePhoto } from './handlers/handlePhoto';
 import { handleGetCategories } from './handlers/handleGetCategories';
+import { handleSimilar } from './handlers/similar';
 
 interface Env {
   PRIVATE_ORIGINALS: R2Bucket;
@@ -41,6 +42,10 @@ export default {
 
     if (url.pathname === '/api/photo') {
       return handlePhoto(request, env);
+    }
+
+    if (url.pathname === '/api/similar') {
+      return handleSimilar(request, env);
     }
     return new Response('API route not found.', { status: 404 });
   },

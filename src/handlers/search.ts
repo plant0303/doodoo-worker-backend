@@ -22,19 +22,16 @@ export async function handleSearch(request: Request, env: Env): Promise<Response
 
   let dbQuery;
 
-  // 🔥 검색어가 있는 경우: RPC 실행
   if (query) {
     dbQuery = supabase
       .rpc('search_images', { search_query: query })
       .select('id, title, thumb_url, preview_url, category', { count: 'exact' });
 
-    // 🔥 RPC 결과에서 category 추가 필터도 적용
     if (category && category !== 'all') {
       dbQuery = dbQuery.eq('category', category);
     }
 
   } else {
-    // 🔥 검색어가 없고 카테고리만 있는 경우
     dbQuery = supabase
       .from('images')
       .select('id, title, thumb_url, preview_url, category', { count: 'exact' })
