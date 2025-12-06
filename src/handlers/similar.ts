@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../lib/supabase';
-import { Env } from '../lib/constants';
+import { CORS_HEADERS, Env } from '../lib/constants';
 
 export async function handleSimilar(request: Request, env: Env): Promise<Response> {
   const supabase = getSupabaseClient(env);
@@ -36,6 +36,6 @@ export async function handleSimilar(request: Request, env: Env): Promise<Respons
   }
 
   return new Response(JSON.stringify({ target, similar: similarImages }), {
-    headers: { "Content-Type": "application/json" }
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS }
   });
 };
