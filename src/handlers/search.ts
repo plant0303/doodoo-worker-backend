@@ -12,6 +12,7 @@ export async function handleSearch(request: Request, env: Env): Promise<Response
   const limit = parseInt(url.searchParams.get('limit') || '30', 10);
   const offset = (page - 1) * limit;
 
+  // 검색어도 없고 카테고리도 없으면 오류
   if (!query && !category) {
     return new Response(JSON.stringify({ error: '검색어(q) 또는 카테고리(category)를 제공해야 합니다.' }), {
       status: 400,
@@ -19,17 +20,29 @@ export async function handleSearch(request: Request, env: Env): Promise<Response
     });
   }
 
-  let dbQuery = supabase.from('images').select('id, title, thumb_url, preview_url, category', { count: 'exact' });
+  let dbQuery;
 
+  // 🔥 검색어가 있는 경우: RPC 실행
   if (query) {
-    dbQuery = supabase.rpc('search_images', { search_query: query })
+    dbQuery = supabase
+      .rpc('search_images', { search_query: query })
       .select('id, title, thumb_url, preview_url, category', { count: 'exact' });
-  } else if (category) {
-    dbQuery = dbQuery.eq('category', category);
+
+    // 🔥 RPC 결과에서 category 추가 필터도 적용
+    if (category && category !== 'all') {
+      dbQuery = dbQuery.eq('category', category);
+    }
+
+  } else {
+    // 🔥 검색어가 없고 카테고리만 있는 경우
+    dbQuery = supabase
+      .from('images')
+      .select('id, title, thumb_url, preview_url, category', { count: 'exact' })
+      .eq('category', category);
   }
 
-  const { data, error, count } = await dbQuery
-    .range(offset, offset + limit - 1);
+  // 페이징 처리
+  const { data, error, count } = await dbQuery.range(offset, offset + limit - 1);
 
   if (error) {
     console.error('Supabase query error:', error.message);
@@ -39,14 +52,12 @@ export async function handleSearch(request: Request, env: Env): Promise<Response
     });
   }
 
-  const responseData = {
+  return new Response(JSON.stringify({
     images: data || [],
-    total_count: count || 0, // 전체 검색 결과 수
-    page: page,
-    limit: limit,
-  };
-
-  return new Response(JSON.stringify(responseData), {
+    total_count: count || 0,
+    page,
+    limit
+  }), {
     status: 200,
     headers: {
       'Content-Type': 'application/json',
