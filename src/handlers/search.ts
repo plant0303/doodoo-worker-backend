@@ -23,8 +23,11 @@ export async function handleSearch(request: Request, env: Env): Promise<Response
   let dbQuery;
 
   if (query) {
+
+    const lowercaseQuery = query.toLowerCase();
+
     dbQuery = supabase
-      .rpc('search_images', { search_query: query })
+      .rpc('search_images', { search_query: lowercaseQuery })
       .select('id, title, thumb_url, preview_url, category', { count: 'exact' });
 
     if (category && category !== 'all') {
