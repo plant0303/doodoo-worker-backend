@@ -16,6 +16,7 @@
 		"wrangler": "^4.50.0"
 	},
 	"dependencies": {
+		"@supabase/postgrest-js": "^2.87.3",
 		"@supabase/supabase-js": "^2.84.0"
 	}
 }

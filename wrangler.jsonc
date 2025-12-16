@@ -20,38 +20,19 @@
 			"bucket_name": "doodoo-private-originals"
 		}
 	],
+  "kv_namespaces": [
+    {
+      "binding": "VIEW_COUNT_KV", // env.VIEW_COUNT_KV 바인딩
+      "id": "604957e928bc4463a6276f364bbbaae4",
+    }
+  ],
 	"vars": {
   	"SUPABASE_URL": "https://cashqlllvxfhwyyjrtmw.supabase.co", 
   	// "SUPABASE_ANON_KEY 은 터미널로 관리
 	},
-	/**
-	 * Smart Placement
-	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
-	 */
-	// "placement": { "mode": "smart" }
-	/**
-	 * Bindings
-	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
-	 * databases, object storage, AI inference, real-time communication and more.
-	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
-	 */
-	/**
-	 * Environment Variables
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
-	 */
-	// "vars": { "MY_VARIABLE": "production_value" }
-	/**
-	 * Note: Use secrets to store sensitive data.
-	 * https://developers.cloudflare.com/workers/configuration/secrets/
-	 */
-	/**
-	 * Static Assets
-	 * https://developers.cloudflare.com/workers/static-assets/binding/
-	 */
-	// "assets": { "directory": "./public/", "binding": "ASSETS" }
-	/**
-	 * Service Bindings (communicate between multiple Workers)
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
-	 */
-	// "services": [{ "binding": "MY_SERVICE", "service": "my-service" }]
+	"triggers": {
+    "crons": [
+      "*/10 * * * *" // 10분마다 Workers를 실행
+    ]
+  }
 }
