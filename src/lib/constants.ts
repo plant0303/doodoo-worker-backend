@@ -6,6 +6,9 @@ export interface Env {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_KEY: string;
+
+  PUBLIC_VERCEL: string;
+  PRIVATE_BUCKET_NAME: string;
 }
 
 // CORS 헤더

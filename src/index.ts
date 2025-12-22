@@ -9,10 +9,13 @@ import { handleAdminAuth } from './handlers/handleAdminAuth';
 import { authenticateAdmin } from './utils/authMiddleware';
 import { handleViewIncrement } from './handlers/handleViewIncrement';
 import { handleBatchUpdate } from './handlers/handleBatchUpdate';
+import { handleGetImages } from './handlers/handleGetImages';
+import { handleImageUpload } from './handlers/handleImageUpload';
 
 interface Env {
   PRIVATE_ORIGINALS: R2Bucket;
   PUBLIC_ASSETS: R2Bucket;
+  
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_KEY: string;
@@ -36,20 +39,11 @@ export default {
     // 관리자 API 라우팅
     // ----------------------------------------------------
 
-    if (url.pathname === '/api/admin/auth') {
-      return handleAdminAuth(request, env);
+    if (url.pathname === '/api/images' && request.method === 'GET') {
+      return handleGetImages(request, env);
     }
-
-    if (url.pathname.startsWith('/api/admin/')) {
-      // 모든 관리자 API 요청 전에 인증 미들웨어 실행
-      const authResult = await authenticateAdmin(request, env);
-
-      if (!authResult.isAdmin && authResult.response) {
-        // 인증 실패 응답
-        return authResult.response;
-      }
-
-      return new Response('Admin API route not found.', { status: 404 });
+    if (url.pathname === '/api/images/upload' && request.method === 'POST') {
+      return handleImageUpload(request, env);
     }
 
 
@@ -105,9 +99,9 @@ export default {
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-        console.log('Batch update scheduler started.');
-        
-        // DB 업데이트 작업이 완료될 때까지 Workers를 유지합니다.
-        ctx.waitUntil(handleBatchUpdate(env));
-    }
+    console.log('Batch update scheduler started.');
+
+    // DB 업데이트 작업이 완료될 때까지 Workers를 유지합니다.
+    ctx.waitUntil(handleBatchUpdate(env));
+  }
 };

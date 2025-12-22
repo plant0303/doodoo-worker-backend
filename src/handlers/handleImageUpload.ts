@@ -1,0 +1,102 @@
+import { createClient } from '@supabase/supabase-js';
+import { CORS_HEADERS, Env } from '../lib/constants';
+
+export async function handleImageUpload(request: Request, env: Env): Promise<Response> {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+  };
+
+  try {
+    const formData = await request.formData();
+    const category = formData.get('category') as string;
+    const metadataRaw = formData.get('metadata') as string;
+
+    if (!metadataRaw) {
+      return new Response(JSON.stringify({ error: '메타데이터가 없습니다.' }), { status: 400, headers });
+    }
+
+    const items = JSON.parse(metadataRaw);
+    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
+
+    // 1. DB에서 지원하는 확장자 정보 미리 로드
+    const { data: fileTypes } = await supabase.from('file_types').select('*');
+    const fileTypeMap = Object.fromEntries(
+      fileTypes?.map((t) => [t.extension.toLowerCase(), t.id]) || []
+    );
+
+    const uploadedIds = [];
+
+    // 2. 각 스톡 아이템(그룹) 순회
+    for (const item of items) {
+      console.log(item);
+
+      const preview_url = `${env.PUBLIC_VERCEL}/${category}/${item.title}_preview.jpg`;
+      const thumb_url = `${env.PUBLIC_VERCEL}/${category}/${item.title}_thum.jpg`;
+
+
+      // Step A: images 테이블에 기본 정보 저장
+      const { data: imageData, error: imgError } = await supabase
+        .from('images')
+        .insert({
+          title: item.title,
+          category: category,
+          keywords: item.keywords,
+          // R2 퍼블릭 도메인 설정 필요
+          preview_url: preview_url,
+          thumb_url: thumb_url,
+        })
+        .select()
+        .single();
+
+      if (imgError) throw new Error(`이미지 정보 저장 실패: ${imgError.message}`);
+
+      const stockId = imageData.id;
+
+      // Step B: 해당 아이템의 모든 소스 파일 처리
+      for (const fileMeta of item.files) {
+        const file = formData.get(fileMeta.formKey) as File;
+        if (!file) continue;
+
+        const r2Path = `${env.PRIVATE_BUCKET_NAME}/${category}/${item.title}.${fileMeta.extension}`;
+
+        // R2 업로드 수행
+        // await env.MY_R2_BUCKET.put(r2Path, file.stream(), {
+        //   httpMetadata: { contentType: file.type },
+        // });
+
+        const fileTypeId = fileTypeMap[fileMeta.extension.toLowerCase()];
+        if (!fileTypeId) continue;
+
+        // stock_files 테이블 상세 정보 저장
+        const { error: fileError } = await supabase
+          .from('stock_files')
+          .insert({
+            stock_id: stockId,
+            file_type_id: fileTypeId,
+            r2_path: r2Path,
+            file_size_mb: parseFloat(fileMeta.fileSizeMb),
+            width: fileMeta.width,   // 프론트에서 보낸 null 값이 그대로 저장됨
+            height: fileMeta.height, // 프론트에서 보낸 null 값이 그대로 저장됨
+            dpi: fileMeta.dpi,
+          });
+
+        if (fileError) throw new Error(`파일 정보 저장 실패: ${fileError.message}`);
+      }
+
+      uploadedIds.push(stockId);
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, count: uploadedIds.length, ids: uploadedIds }),
+      { status: 200, headers, ...CORS_HEADERS }
+    );
+
+  } catch (error: any) {
+    console.error('Upload error:', error.message);
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers }
+    );
+  }
+}
