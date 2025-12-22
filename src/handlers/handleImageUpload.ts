@@ -58,15 +58,19 @@ export async function handleImageUpload(request: Request, env: Env): Promise<Res
         const file = formData.get(fileMeta.formKey) as File;
         if (!file) continue;
 
-        const r2Path = `${env.PRIVATE_BUCKET_NAME}/${category}/${item.title}.${fileMeta.extension}`;
+        const r2Key = `${category}/${item.title}.${fileMeta.extension}`;
+        const dbPath = `${env.PRIVATE_BUCKET_NAME}/${r2Key}`;
 
         // R2 업로드 수행
-        // await env.MY_R2_BUCKET.put(r2Path, file.stream(), {
-        //   httpMetadata: { contentType: file.type },
-        // });
+        await env.PRIVATE_ORIGINALS.put(r2Key, file.stream(), {
+          httpMetadata: { contentType: file.type },
+        });
 
         const fileTypeId = fileTypeMap[fileMeta.extension.toLowerCase()];
-        if (!fileTypeId) continue;
+        if (!fileTypeId) {
+          console.warn(`${fileMeta.extension}은 등록되지 않은 확장자입니다.`);
+          continue;
+        }
 
         // stock_files 테이블 상세 정보 저장
         const { error: fileError } = await supabase
@@ -74,7 +78,7 @@ export async function handleImageUpload(request: Request, env: Env): Promise<Res
           .insert({
             stock_id: stockId,
             file_type_id: fileTypeId,
-            r2_path: r2Path,
+            r2_path: dbPath,
             file_size_mb: parseFloat(fileMeta.fileSizeMb),
             width: fileMeta.width,   // 프론트에서 보낸 null 값이 그대로 저장됨
             height: fileMeta.height, // 프론트에서 보낸 null 값이 그대로 저장됨
