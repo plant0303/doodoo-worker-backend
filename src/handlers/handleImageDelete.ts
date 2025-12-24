@@ -2,44 +2,64 @@ import { createClient } from "@supabase/supabase-js";
 import { CORS_HEADERS, Env } from "../lib/constants";
 
 export async function handleFullStockDelete(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const stockId = url.searchParams.get('stockId'); // ?stockId=UUID 형태로 전달
-  
   const headers = { 'Content-Type': 'application/json', ...CORS_HEADERS };
+  
+  // OPTIONS 요청 처리 (CORS)
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers });
+  }
+
   const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
 
-  if (!stockId) return new Response('Stock ID 필수', { status: 400, headers });
-
   try {
-    // 1. 해당 스톡에 연결된 모든 파일 경로(r2_path) 가져오기
+    const body = await request.json() as { ids: string[] };
+    const ids = body.ids;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return new Response(JSON.stringify({ error: '삭제할 ID(배열)가 필요합니다.' }), { status: 400, headers });
+    }
+
+    // 선택된 모든 스톡에 연결된 R2 파일 경로들을 한꺼번에 가져오기
     const { data: files, error: fetchError } = await supabase
       .from('stock_files')
       .select('r2_path')
-      .eq('stock_id', stockId);
+      .in('stock_id', ids); // .in 연산자로 여러 ID를 한 번에 조회
 
     if (fetchError) throw fetchError;
 
-    // 2. R2에서 파일들 일괄 삭제
+    // R2에서 모든 파일 삭제
     if (files && files.length > 0) {
       for (const file of files) {
-        // DB의 "버킷명/경로"에서 순수 r2Key 추출
         const r2Key = file.r2_path.split('/').slice(1).join('/');
-        await env.PRIVATE_ORIGINALS.delete(r2Key);
-        console.log(`[R2 삭제] ${r2Key}`);
+        if (r2Key) {
+          await env.PRIVATE_ORIGINALS.delete(r2Key);
+          console.log(`[R2 삭제 완료] ${r2Key}`);
+        }
       }
     }
 
-    // 3. DB 레코드 삭제 (Cascade 설정이 되어있다면 images만 지워도 stock_files가 지워짐)
-    // 설정이 안되어있을 수 있으므로 명시적으로 stock_files 먼저 삭제 권장
-    await supabase.from('stock_files').delete().eq('stock_id', stockId);
-    const { error: imageError } = await supabase.from('images').delete().eq('id', stockId);
+    // DB 레코드 삭제
+    const { error: fileDbError } = await supabase
+      .from('stock_files')
+      .delete()
+      .in('stock_id', ids);
+    
+    if (fileDbError) throw fileDbError;
 
-    if (imageError) throw imageError;
+    const { error: imageDbError } = await supabase
+      .from('images')
+      .delete()
+      .in('id', ids);
 
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers });
+    if (imageDbError) throw imageDbError;
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: `${ids.length}개의 항목이 성공적으로 삭제되었습니다.` 
+    }), { status: 200, headers });
 
   } catch (err: any) {
-    console.error('삭제 에러:', err.message);
+    console.error('삭제 프로세스 에러:', err.message);
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers });
   }
 }
