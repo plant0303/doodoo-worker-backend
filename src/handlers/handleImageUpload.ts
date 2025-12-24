@@ -29,10 +29,38 @@ export async function handleImageUpload(request: Request, env: Env): Promise<Res
 
     // 2. 각 스톡 아이템(그룹) 순회
     for (const item of items) {
-      console.log(item);
 
-      const preview_url = `${env.PUBLIC_VERCEL}/${category}/${item.title}_preview.jpg`;
-      const thumb_url = `${env.PUBLIC_VERCEL}/${category}/${item.title}_thum.jpg`;
+      let previewUrl = '';
+      let thumbUrl = '';
+
+      // 1. 프리뷰 이미지 업로드 
+      if (item.previewFormKey) {
+        const previewFile = formData.get(item.previewFormKey) as File;
+        if (previewFile) {
+          const ext = previewFile.name.split('.').pop() || 'jpg';
+          const previewKey = `${category}/${item.title}_preview.${ext}`;
+
+          await env.PUBLIC_ASSETS.put(previewKey, previewFile.stream(), {
+            httpMetadata: { contentType: previewFile.type },
+          });
+          // R2 퍼블릭 도메인 또는 워커 주소와 결합
+          previewUrl = `${env.PUBLIC_VERCEL}/${previewKey}`;
+        }
+      }
+
+      // 2. 썸네일 이미지 업로드 (존재할 경우)
+      if (item.thumbFormKey) {
+        const thumbFile = formData.get(item.thumbFormKey) as File;
+        if (thumbFile) {
+          const ext = thumbFile.name.split('.').pop() || 'jpg';
+          const thumbKey = `${category}/${item.title}_thum.${ext}`;
+          
+          await env.PUBLIC_ASSETS.put(thumbKey, thumbFile.stream(), {
+            httpMetadata: { contentType: thumbFile.type },
+          });
+          thumbUrl = `${env.PUBLIC_VERCEL}/${thumbKey}`;
+        }
+      }
 
 
       // Step A: images 테이블에 기본 정보 저장
@@ -43,8 +71,8 @@ export async function handleImageUpload(request: Request, env: Env): Promise<Res
           category: category,
           keywords: item.keywords,
           // R2 퍼블릭 도메인 설정 필요
-          preview_url: preview_url,
-          thumb_url: thumb_url,
+          preview_url: previewUrl,
+          thumb_url: thumbUrl,
         })
         .select()
         .single();
