@@ -3,7 +3,7 @@ import { CORS_HEADERS, Env } from "../lib/constants";
 
 export async function handleFullStockDelete(request: Request, env: Env): Promise<Response> {
   const headers = { 'Content-Type': 'application/json', ...CORS_HEADERS };
-  
+
   // OPTIONS 요청 처리 (CORS)
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers });
@@ -18,6 +18,43 @@ export async function handleFullStockDelete(request: Request, env: Env): Promise
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return new Response(JSON.stringify({ error: '삭제할 ID(배열)가 필요합니다.' }), { status: 400, headers });
     }
+
+    // 
+    // --- public 프리뷰 썸네일 제거 로직 --- 
+    // 
+    const { data: images, error: imageFetchError } = await supabase
+      .from('images')
+      .select('preview_url, thumb_url')
+      .in('id', ids);
+
+    if (imageFetchError) throw imageFetchError;
+
+    // PUBLIC_ASSETS 버킷에서 프리뷰/썸네일 삭제
+    if (images && images.length > 0) {
+      for (const img of images) {
+        // URL에서 파일 경로(Key)만 추출하는 로직
+        const extractKey = (url: string | null) => {
+          if (!url) return null;
+          try {
+            const urlObj = new URL(url);
+            return urlObj.pathname.startsWith('/') ? urlObj.pathname.substring(1) : urlObj.pathname;
+          } catch {
+            return null;
+          }
+        };
+
+        const previewKey = extractKey(img.preview_url);
+        const thumbKey = extractKey(img.thumb_url);
+
+        if (previewKey) await env.PUBLIC_ASSETS.delete(previewKey);
+        if (thumbKey) await env.PUBLIC_ASSETS.delete(thumbKey);
+      }
+    }
+
+
+    // 
+    // --- private 원본 소스 제거 로직 --- 
+    // 
 
     // 선택된 모든 스톡에 연결된 R2 파일 경로들을 한꺼번에 가져오기
     const { data: files, error: fetchError } = await supabase
@@ -43,7 +80,7 @@ export async function handleFullStockDelete(request: Request, env: Env): Promise
       .from('stock_files')
       .delete()
       .in('stock_id', ids);
-    
+
     if (fileDbError) throw fileDbError;
 
     const { error: imageDbError } = await supabase
@@ -53,9 +90,9 @@ export async function handleFullStockDelete(request: Request, env: Env): Promise
 
     if (imageDbError) throw imageDbError;
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      message: `${ids.length}개의 항목이 성공적으로 삭제되었습니다.` 
+    return new Response(JSON.stringify({
+      success: true,
+      message: `${ids.length}개의 항목이 성공적으로 삭제되었습니다.`
     }), { status: 200, headers });
 
   } catch (err: any) {
