@@ -12,6 +12,7 @@ import { handleBatchUpdate } from './handlers/handleBatchUpdate';
 import { handleGetImages } from './handlers/handleGetImages';
 import { handleImageUpload } from './handlers/handleImageUpload';
 import { handleImageEdit } from './handlers/handleImageEdit';
+import { handleFullStockDelete } from './handlers/handleImageDelete';
 
 interface Env {
   PRIVATE_ORIGINALS: R2Bucket;
@@ -47,8 +48,14 @@ export default {
       return handleImageUpload(request, env);
     }
 
+    // admin 개별수정
     if (url.pathname.startsWith('/api/images/edit')) {
       return handleImageEdit(request, env);
+    }
+
+    // admin 삭제
+    if (url.pathname === '/api/images/delete') {
+      return handleFullStockDelete(request, env); 
     }
 
     // ----------------------------------------------------
