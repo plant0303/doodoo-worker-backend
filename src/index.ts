@@ -11,11 +11,12 @@ import { handleViewIncrement } from './handlers/handleViewIncrement';
 import { handleBatchUpdate } from './handlers/handleBatchUpdate';
 import { handleGetImages } from './handlers/handleGetImages';
 import { handleImageUpload } from './handlers/handleImageUpload';
+import { handleImageEdit } from './handlers/handleImageEdit';
 
 interface Env {
   PRIVATE_ORIGINALS: R2Bucket;
   PUBLIC_ASSETS: R2Bucket;
-  
+
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_KEY: string;
@@ -46,6 +47,9 @@ export default {
       return handleImageUpload(request, env);
     }
 
+    if (url.pathname.startsWith('/api/images/edit')) {
+      return handleImageEdit(request, env);
+    }
 
     // ----------------------------------------------------
     // 사용자 API 라우팅
