@@ -13,6 +13,8 @@ import { handleGetImages } from './handlers/handleGetImages';
 import { handleImageUpload } from './handlers/handleImageUpload';
 import { handleImageEdit } from './handlers/handleImageEdit';
 import { handleFullStockDelete } from './handlers/handleImageDelete';
+import { handleLogout } from './handlers/handleLogout';
+import verifyAdminToken from './lib/auth';
 
 interface Env {
   PRIVATE_ORIGINALS: R2Bucket;
@@ -35,27 +37,67 @@ export default {
       });
     }
     const url = new URL(request.url);
-    const path = url.pathname;
 
     // ----------------------------------------------------
     // 관리자 API 라우팅
     // ----------------------------------------------------
 
-    if (url.pathname === '/api/images' && request.method === 'GET') {
+    // 관리자 미들웨어 (/admin 경로 보안 설정)
+    if (url.pathname.startsWith('/admin')) {
+
+      // r관리자 로그인은 검증 예외
+      if (url.pathname === '/admin/auth' && request.method === 'POST') {
+        return handleAdminAuth(request, env);
+      }
+
+      // 관리자 로그인 토큰 있는지 확인
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: '인증이 필요합니다.' }), {
+          status: 401,
+          headers: CORS_HEADERS
+        });
+      }
+
+      const token = authHeader.split(' ')[1];
+      const isAdmin = await verifyAdminToken(token, env); // 아래 별도 함수로 정의
+
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: '권한이 없습니다.' }), {
+          status: 403,
+          headers: CORS_HEADERS
+        });
+      }
+
+    }
+
+
+    // 관리자 로그인 확인
+    if (url.pathname === '/admin/auth' && request.method === 'POST') {
+      return handleAdminAuth(request, env);
+    }
+
+    // 로그아웃
+    if (url.pathname === '/admin/logout' && request.method === 'POST') {
+      return handleLogout(request, env);
+    }
+
+    if (url.pathname === '/admin/images' && request.method === 'GET') {
       return handleGetImages(request, env);
     }
-    if (url.pathname === '/api/images/upload' && request.method === 'POST') {
+
+    if (url.pathname === '/admin/images/upload' && request.method === 'POST') {
       return handleImageUpload(request, env);
     }
 
     // admin 개별수정
-    if (url.pathname.startsWith('/api/images/edit')) {
+    if (url.pathname.startsWith('/admin/images/edit')) {
       return handleImageEdit(request, env);
     }
 
     // admin 삭제
-    if (url.pathname === '/api/images/delete') {
-      return handleFullStockDelete(request, env); 
+    if (url.pathname === '/admin/images/delete') {
+      return handleFullStockDelete(request, env);
     }
 
     // ----------------------------------------------------
