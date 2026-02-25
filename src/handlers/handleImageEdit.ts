@@ -39,11 +39,11 @@ export async function handleImageEdit(request: Request, env: Env): Promise<Respo
 
   // 메타데이터 수정 (PATCH)
   if (request.method === 'PATCH') {
-    const { title, keywords } = await request.json();
+    const { title, keywords, adobeUrl } = await request.json();
 
     const { error } = await supabase
       .from('images')
-      .update({ title, keywords, uploaded_at: new Date().toISOString() })
+      .update({ title, keywords, adobe_express: adobeUrl, uploaded_at: new Date().toISOString() })
       .eq('id', stockId);
 
     if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers });
