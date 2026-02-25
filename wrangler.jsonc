@@ -13,17 +13,20 @@
 	"r2_buckets": [
 		{
 			"binding": "PUBLIC_ASSETS", // 썸네일용 바인딩
-			"bucket_name": "doodoo-public-assets" 
+			"bucket_name": "doodoo-public-assets",
+			"preview_bucket_name": "doodoo-public-assets"
 		},
 		{
 			"binding": "PRIVATE_ORIGINALS", // 원본 파일용 바인딩
-			"bucket_name": "doodoo-private-originals"
+			"bucket_name": "doodoo-private-originals",
+			"preview_bucket_name": "doodoo-private-originals"
 		}
 	],
   "kv_namespaces": [
     {
       "binding": "VIEW_COUNT_KV", // env.VIEW_COUNT_KV 바인딩
       "id": "604957e928bc4463a6276f364bbbaae4",
+			"preview_id": "da54150d330e4b1780b134b197aab022"
     }
   ],
 	"vars": {

@@ -1,6 +1,7 @@
 import { getSupabaseClient } from '../lib/supabase';
 import { Env, CORS_HEADERS } from '../lib/constants';
-
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 export async function handleDownload(request: Request, env: Env): Promise<Response> {
   const supabase = getSupabaseClient(env);
   const url = new URL(request.url);
@@ -59,8 +60,6 @@ export async function handleDownload(request: Request, env: Env): Promise<Respon
   const r2Key = stockFileData.r2_path;
   const fileMeta = stockFileData.file_types;
 
-  // 💡 수정된 부분: R2 Key에서 버킷 이름 프리픽스를 제거합니다.
-  // (이 버킷 이름은 wrangler.jsonc에 정의된 이름과 같아야 합니다.)
   const BUCKET_NAME_PREFIX = "doodoo-private-originals/";
   let finalR2Key = r2Key;
 
@@ -69,52 +68,40 @@ export async function handleDownload(request: Request, env: Env): Promise<Respon
     finalR2Key = r2Key.substring(BUCKET_NAME_PREFIX.length);
   }
 
-  // 이 로그로 finalR2Key가 "photo/pinkmhuly15_original_jpg.jpg"인지 확인 가능
   console.log(`[DL-3] Final R2 Key used: "${finalR2Key}"`);
 
-  // 3. Cloudflare R2에서 파일 객체 가져오기 (수정된 키 finalR2Key 사용)
-  // object = await env.PRIVATE_ORIGINALS.get("photo/pinkmhuly15_original_jpg.jpg") 호출됨
-  const object = await env.PRIVATE_ORIGINALS.get(finalR2Key);
-  if (object === null) {
-    // 4. R2 접근 실패 확인 (이 오류가 출력되면 R2 바인딩/키 불일치가 확실합니다)
-    console.error(`[DL-4] R2 object not found for key: "${r2Key}"`);
-    console.error(`[DL-4] R2 object not found for key: "${finalR2Key}"`);
-    return new Response(
-      JSON.stringify({ error: 'R2 원본 파일을 찾을 수 없습니다. (경로 오류)' }),
-      { status: 404, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS } }
-    );
+  try {
+    // 3. S3 Client 설정 (Cloudflare R2용)
+    const s3 = new S3Client({
+      region: "auto",
+      endpoint: `https://${env.ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: env.R2_ACCESS_KEY_ID,
+        secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+      },
+    });
+    console.log(env.ACCOUNT_ID);
+
+    // 4. Presigned URL 생성
+    const command = new GetObjectCommand({
+      Bucket: "doodoo-private-originals", // 실제 R2 버킷 이름
+      Key: finalR2Key,
+      ResponseContentDisposition: `attachment; filename="download.${stockFileData.file_types?.extension}"`,
+      ResponseContentType: stockFileData.file_types?.mime_type || "application/octet-stream",
+    });
+
+    // 유효시간 1시간(3600초)
+    const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
+
+    // 5. 클라이언트에게 서명된 URL 반환
+    return new Response(JSON.stringify({ downloadUrl: signedUrl }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
+    });
+
+  } catch (err: any) {
+    console.error("Signed URL 생성 실패:", err);
+    return new Response(JSON.stringify({ error: '서명 생성 실패' }), { status: 500, headers: CORS_HEADERS });
   }
 
-  // 4. 다운로드 파일 이름 및 헤더 설정
-  // 파일 이름은 DB에서 가져온 메타데이터를 기반으로 안전하게 생성합니다.
-  const originalFilename = r2Key.split('/').pop() || 'download';
-  const extension = fileMeta?.extension || 'file';
-
-  // 최종 다운로드 파일 이름: [originalFilename_without_ext].[extension]
-  const baseFilename = originalFilename.substring(0, originalFilename.lastIndexOf('.'));
-  const finalFilename = `${baseFilename}.${extension}`;
-
-  const headers = new Headers();
-  object.writeHttpMetadata(headers);
-  headers.set('ETag', object.httpEtag);
-
-  // Content-Type을 file_types에서 가져온 mime_type으로 설정
-  if (fileMeta?.mime_type) {
-    headers.set('Content-Type', fileMeta.mime_type);
-  } else {
-    // MIME 타입이 없으면 기본값으로 application/octet-stream 설정
-    headers.set('Content-Type', 'application/octet-stream');
-  }
-
-  // Content-Disposition 설정
-  headers.set('Content-Disposition', `attachment; filename="${finalFilename}"`);
-
-  // CORS 헤더 추가
-  Object.keys(CORS_HEADERS).forEach(key => {
-    const headerKey = key as keyof typeof CORS_HEADERS;
-    headers.set(headerKey, CORS_HEADERS[headerKey]);
-  });
-
-  // 5. R2 파일 스트리밍 반환
-  return new Response(object.body, { headers });
 }
