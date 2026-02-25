@@ -20,6 +20,7 @@ export async function handlePhoto(request: Request, env: Env, imageId: string): 
       category, 
       preview_url,
       uploaded_at,
+      adobe_express,
       stock_files (
         file_size_mb, 
         width, 
@@ -72,7 +73,7 @@ export async function handlePhoto(request: Request, env: Env, imageId: string): 
     download_options: downloadOptions,
   };
 
-  // 상세 데이터를 반환합니다.
+
   return new Response(JSON.stringify(responseData), {
     status: 200,
     headers: {
