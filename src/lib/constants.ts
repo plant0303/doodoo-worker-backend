@@ -10,11 +10,14 @@ export interface Env {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_KEY: string;
+
+  PUBLIC_VERCEL: string;
+  PRIVATE_BUCKET_NAME: string;
 }
 
 // CORS 헤더
 export const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PATCH, DELETE',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };

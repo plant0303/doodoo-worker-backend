@@ -31,6 +31,8 @@
   ],
 	"vars": {
   	"SUPABASE_URL": "https://cashqlllvxfhwyyjrtmw.supabase.co", 
+		"PUBLIC_VERCEL": "https://pub-c23d57f0578646659d59cf9f1ba3e49c.r2.dev",
+		"PRIVATE_BUCKET_NAME": "doodoo-private-originals"
   	// "SUPABASE_ANON_KEY 은 터미널로 관리
 	},
 	"triggers": {
