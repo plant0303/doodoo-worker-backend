@@ -40,7 +40,8 @@ export async function handleImageUpload(request: Request, env: Env): Promise<Res
           const ext = previewFile.name.split('.').pop() || 'jpg';
           const previewKey = `${category}/${item.title}_preview.${ext}`;
 
-          await env.PUBLIC_ASSETS.put(previewKey, previewFile.stream(), {
+          const buffer = await previewFile.arrayBuffer();
+          await env.PUBLIC_ASSETS.put(previewKey, buffer, {
             httpMetadata: { contentType: previewFile.type },
           });
           // R2 퍼블릭 도메인 또는 워커 주소와 결합
@@ -54,14 +55,14 @@ export async function handleImageUpload(request: Request, env: Env): Promise<Res
         if (thumbFile) {
           const ext = thumbFile.name.split('.').pop() || 'jpg';
           const thumbKey = `${category}/${item.title}_thum.${ext}`;
-          
+
           await env.PUBLIC_ASSETS.put(thumbKey, thumbFile.stream(), {
             httpMetadata: { contentType: thumbFile.type },
           });
+
           thumbUrl = `${env.PUBLIC_VERCEL}/${thumbKey}`;
         }
       }
-
 
       // Step A: images 테이블에 기본 정보 저장
       const { data: imageData, error: imgError } = await supabase
@@ -70,9 +71,9 @@ export async function handleImageUpload(request: Request, env: Env): Promise<Res
           title: item.title,
           category: category,
           keywords: item.keywords,
-          // R2 퍼블릭 도메인 설정 필요
           preview_url: previewUrl,
           thumb_url: thumbUrl,
+          adobe_express: item.adobeUrl,
         })
         .select()
         .single();

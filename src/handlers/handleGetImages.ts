@@ -19,7 +19,6 @@ export async function handleGetImages(request: Request, env: Env) {
     .from('images')
     .select('id, title, thumb_url, uploaded_at, category, views ', { count: 'exact' }) // 전체 개수도 포함
     .order('uploaded_at', { ascending: false }) // 최신순 정렬
-    .range(from, to);
 
   // 카테고리 필터가 있다면 추가
   if (category) {
