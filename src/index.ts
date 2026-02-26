@@ -15,6 +15,7 @@ import { handleImageEdit } from './handlers/handleImageEdit';
 import { handleFullStockDelete } from './handlers/handleImageDelete';
 import { handleLogout } from './handlers/handleLogout';
 import verifyAdminToken from './lib/auth';
+import { handleSitemapData } from './handlers/handleSitemapData';
 
 interface Env {
   PRIVATE_ORIGINALS: R2Bucket;
@@ -103,6 +104,10 @@ export default {
     // ----------------------------------------------------
     // 사용자 API 라우팅
     // ----------------------------------------------------
+
+    if (url.pathname === '/api/sitemap-data' && request.method === 'GET') {
+      return handleSitemapData(request, env);
+    }
 
     if (url.pathname === '/api/search') {
       return handleSearch(request, env);
